@@ -20,9 +20,30 @@ export const BackendConnectorModal: React.FC<BackendConnectorModalProps> = ({
 }) => {
   const [urlInput, setUrlInput] = useState(customBackendUrl || '');
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'guide' | 'code' | 'schema'>('guide');
+  const [activeTab, setActiveTab] = useState<'endpoints' | 'guide' | 'code' | 'schema'>('endpoints');
+  const [testEndpoint, setTestEndpoint] = useState<'/api/health' | '/api/busarrival'>('/api/busarrival');
+  const [testBusStopCode, setTestBusStopCode] = useState('83139');
+  const [testResponse, setTestResponse] = useState<string | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   if (!isOpen) return null;
+
+  const runEndpointTest = async () => {
+    setIsTesting(true);
+    setTestResponse(null);
+    try {
+      const url = testEndpoint === '/api/health' 
+        ? '/api/health' 
+        : `/api/busarrival?BusStopCode=${encodeURIComponent(testBusStopCode || '83139')}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      setTestResponse(JSON.stringify(data, null, 2));
+    } catch (err) {
+      setTestResponse(JSON.stringify({ error: 'Network error or endpoint not reachable', details: String(err) }, null, 2));
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const expressSnippet = `// server.ts - Example Express proxy for LTA DataMall v3
 import express from 'express';
@@ -103,6 +124,16 @@ app.listen(3000, () => console.log('Transit backend ready on port 3000'));`;
         {/* Tab Strip */}
         <div className="flex items-center gap-4 px-5 border-b border-slate-800 bg-slate-950/30 text-xs font-medium">
           <button
+            onClick={() => setActiveTab('endpoints')}
+            className={`py-3 border-b-2 transition-colors ${
+              activeTab === 'endpoints'
+                ? 'border-emerald-400 text-emerald-400 font-semibold'
+                : 'border-transparent text-slate-400 hover:text-white'
+            }`}
+          >
+            Serverless API (/api)
+          </button>
+          <button
             onClick={() => setActiveTab('guide')}
             className={`py-3 border-b-2 transition-colors ${
               activeTab === 'guide'
@@ -137,6 +168,83 @@ app.listen(3000, () => console.log('Transit backend ready on port 3000'));`;
         {/* Content Body */}
         <div className="p-5 overflow-y-auto space-y-5 text-xs text-slate-300">
           
+          {activeTab === 'endpoints' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-white">Serverless Function Endpoints (/api)</span>
+                  <span className="text-[10px] font-mono-tabular bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded">
+                    Active in root /api
+                  </span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  The serverless handlers are located in <code className="text-emerald-400 font-mono">/api/health.ts</code> and <code className="text-emerald-400 font-mono">/api/busarrival.ts</code>. You can test live queries right now:
+                </p>
+              </div>
+
+              {/* Endpoint Selector & Tester */}
+              <div className="space-y-3 bg-slate-950/60 p-4 border border-slate-800 rounded-xl">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-400 mb-1">Target Endpoint</label>
+                    <select
+                      value={testEndpoint}
+                      onChange={(e) => setTestEndpoint(e.target.value as '/api/health' | '/api/busarrival')}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="/api/busarrival">GET /api/busarrival</option>
+                      <option value="/api/health">GET /api/health</option>
+                    </select>
+                  </div>
+
+                  {testEndpoint === '/api/busarrival' && (
+                    <div>
+                      <label className="block text-slate-400 mb-1">Bus Stop Code</label>
+                      <input
+                        type="text"
+                        value={testBusStopCode}
+                        onChange={(e) => setTestBusStopCode(e.target.value)}
+                        placeholder="e.g. 83139 or 01012"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 flex items-center justify-between">
+                  <span className="text-[11px] font-mono text-slate-400 truncate">
+                    {testEndpoint === '/api/health' 
+                      ? '/api/health' 
+                      : `/api/busarrival?BusStopCode=${testBusStopCode || '83139'}`}
+                  </span>
+                  <button
+                    onClick={runEndpointTest}
+                    disabled={isTesting}
+                    className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-1.5 shrink-0"
+                  >
+                    <span>{isTesting ? 'Fetching...' : 'Send Live Request'}</span>
+                  </button>
+                </div>
+
+                {testResponse && (
+                  <div className="mt-3 space-y-1">
+                    <span className="text-[11px] text-slate-400 font-medium">Response JSON:</span>
+                    <pre className="p-3 bg-slate-950 border border-slate-800 rounded-lg font-mono text-[11px] text-emerald-400 overflow-x-auto max-h-56 leading-relaxed">
+                      {testResponse}
+                    </pre>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-amber-950/20 border border-amber-700/30 rounded-xl space-y-1">
+                <span className="font-semibold text-amber-300 block">Adding Your LTA AccountKey</span>
+                <p className="text-slate-400 text-[11px]">
+                  When ready, set <code className="text-amber-300 font-mono">LTA_ACCOUNT_KEY=&quot;your_key&quot;</code> in your environment or secrets. The serverless function will immediately forward requests to <code className="text-slate-300 font-mono">https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival</code> with <code className="text-slate-300 font-mono">AccountKey</code> header.
+                </p>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'guide' && (
             <div className="space-y-4">
               <div className="p-4 bg-emerald-950/30 border border-emerald-700/40 rounded-xl space-y-2">
