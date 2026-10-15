@@ -1,0 +1,6 @@
+{
+  "name": "SG Bus Radar - LTA Real-Time Bus Arrival & Wait Time Predictions",
+  "description": "Live Singapore bus arrival tracker with real-time bus locations, LTA DataMall load levels, route progression, and wait time predictions for all bus stops.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
